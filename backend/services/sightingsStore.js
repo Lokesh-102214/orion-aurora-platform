@@ -16,6 +16,7 @@ const PHOTO_DIR = path.join(DATA_DIR, 'sightings_photos');
 
 const MAX_SIGHTINGS = 5000;
 const MAX_PHOTO_BYTES = 1024 * 1024;
+const CLEAR_ON_STARTUP = String(process.env.CLEAR_SIGHTINGS_ON_STARTUP || '').trim() === '1';
 
 let db;
 let initPromise = null;
@@ -123,6 +124,25 @@ async function trimRows() {
   );
 }
 
+async function clearAllSightingsData() {
+  await run('DELETE FROM sightings');
+
+  if (fs.existsSync(PHOTO_DIR)) {
+    for (const file of fs.readdirSync(PHOTO_DIR)) {
+      try {
+        fs.unlinkSync(path.join(PHOTO_DIR, file));
+      } catch {}
+    }
+  }
+
+  // Keep legacy JSON aligned to avoid re-migration of old test entries.
+  try {
+    fs.writeFileSync(LEGACY_JSON_FILE, '[]\n');
+  } catch {}
+
+  console.log('[sightingsStore] cleared sightings data via CLEAR_SIGHTINGS_ON_STARTUP=1');
+}
+
 async function ensureInit() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
@@ -143,7 +163,13 @@ async function ensureInit() {
        )`
     );
     await run('CREATE INDEX IF NOT EXISTS idx_sightings_ts ON sightings(ts DESC)');
-    await maybeMigrateLegacyJson();
+
+    if (CLEAR_ON_STARTUP) {
+      await clearAllSightingsData();
+    } else {
+      await maybeMigrateLegacyJson();
+    }
+
     await trimRows();
   })();
   return initPromise;

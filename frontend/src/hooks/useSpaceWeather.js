@@ -106,7 +106,6 @@ export function useSpaceWeather() {
       },
       substorm_alert: (data) => {
         setSubstormAlert(normalizeSubstormAlert(data));
-        if (data.level === 'WATCH') setTimeout(() => setSubstormAlert(null), 10 * 60 * 1000);
       },
       onError: () => setIsStale(true),
     });

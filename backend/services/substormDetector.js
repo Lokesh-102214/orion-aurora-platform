@@ -7,17 +7,19 @@
  *   1. Bz drops below –7 nT (threshold crossing)
  *   2. dBz/dt < –2 nT/min for 3+ consecutive readings (rapid southward turning)
  *   3. Solar wind speed > 500 km/s AND Bz < –5 nT (compound condition)
+ *   4. Sustained southward Bz <= –4 nT (early watch condition)
  */
 const { getCache } = require('./noaaPoller');
 
 const BZ_THRESHOLD       = -7;    // nT
 const BZ_RATE_THRESHOLD  = -2;    // nT/min
+const BZ_WATCH_THRESHOLD = -4;    // nT
 const SPEED_THRESHOLD    = 500;   // km/s
 const HISTORY_LENGTH     = 10;    // readings to maintain for derivative
 const MONITOR_INTERVAL_MS = 60000; // 1 minute
 
 const bzHistory = [];
-let alertCooldown = false; // prevent re-triggering for 15 minutes
+let alertCooldownUntilTs = 0;
 let latestSubstormAlert = null;
 
 let broadcastFn = null;
@@ -47,7 +49,16 @@ function classifyAlert(bz, bzRate, speed) {
   if (bzRate < BZ_RATE_THRESHOLD) {
     return { level: 'WATCH', message: `Bz turning southward at ${bzRate.toFixed(1)} nT/min — substorm may develop within 10 minutes`, confidence: 'MEDIUM' };
   }
+  // Sustained southward IMF even without extreme derivative.
+  if (bz <= BZ_WATCH_THRESHOLD) {
+    return { level: 'WATCH', message: `Bz is sustained southward at ${bz.toFixed(1)} nT — substorm risk elevated`, confidence: 'LOW' };
+  }
   return null;
+}
+
+function cooldownMsForLevel(level) {
+  if (level === 'WATCH') return 5 * 60 * 1000;
+  return 15 * 60 * 1000;
 }
 
 function startSubstormMonitor(broadcast) {
@@ -69,8 +80,9 @@ function startSubstormMonitor(broadcast) {
 
     const bzRate = computeDerivative(bzHistory);
     const alert = classifyAlert(bz, bzRate, speed);
+    const now = Date.now();
 
-    if (alert && !alertCooldown) {
+    if (alert && now >= alertCooldownUntilTs) {
       console.log(`[substormDetector] ALERT: ${alert.level} — ${alert.message}`);
       latestSubstormAlert = {
         ...alert,
@@ -81,9 +93,7 @@ function startSubstormMonitor(broadcast) {
       };
       broadcastFn('substorm_alert', latestSubstormAlert);
 
-      // 15-minute cooldown before next alert
-      alertCooldown = true;
-      setTimeout(() => { alertCooldown = false; }, 15 * 60 * 1000);
+      alertCooldownUntilTs = now + cooldownMsForLevel(alert.level);
     }
 
     // Always broadcast current telemetry for live gauge

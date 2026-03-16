@@ -8,8 +8,8 @@
 ## Live Demo
 
 ```
-Backend:  http://localhost:3001
-Frontend: http://localhost:5173
+Frontend (Vercel): https://orion-aurora-platform-eo6fu1f1x-lokesh-102214s-projects.vercel.app/
+Backend (Render):  Deployed on Render (Node.js/Express API)
 ```
 
 ---

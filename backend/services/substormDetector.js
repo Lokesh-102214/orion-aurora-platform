@@ -15,21 +15,21 @@
  */
 const { getCache } = require('./noaaPoller');
 
-const BZ_WARNING_THRESHOLD = -7;      // nT
-const BZ_SEVERE_THRESHOLD = -5;       // nT
-const BZ_RATE_WATCH_THRESHOLD = -2;   // nT/min
-const SPEED_SEVERE_THRESHOLD = 500;   // km/s
+const BZ_WARNING_THRESHOLD = -1.5;    // nT (lenient test profile)
+const BZ_SEVERE_THRESHOLD = -2;       // nT (lenient test profile)
+const BZ_RATE_WATCH_THRESHOLD = -0.3; // nT/min (lenient test profile)
+const SPEED_SEVERE_THRESHOLD = 360;   // km/s (lenient test profile)
 const HISTORY_LENGTH = 10;            // readings to maintain for derivative
 const MONITOR_INTERVAL_MS = 60000; // 1 minute
-const WATCH_CONSECUTIVE_REQUIRED = 3;
-const QUIET_CLEAR_REQUIRED = 3;
-const SAME_LEVEL_REBROADCAST_MS = 10 * 60 * 1000;
-const MAX_ACTIVE_ALERT_AGE_MS = 20 * 60 * 1000;
+const WATCH_CONSECUTIVE_REQUIRED = 1;
+const QUIET_CLEAR_REQUIRED = 5;
+const SAME_LEVEL_REBROADCAST_MS = 2 * 60 * 1000;
+const MAX_ACTIVE_ALERT_AGE_MS = 45 * 60 * 1000;
 
 const HYSTERESIS = {
-  severe: { bz: -4.5, speed: 470 },
-  warning: { bz: -5.5 },
-  watch: { bzRate: -0.8 },
+  severe: { bz: -1.5, speed: 340 },
+  warning: { bz: -1.0 },
+  watch: { bzRate: -0.2 },
 };
 
 const bzHistory = [];

@@ -7,7 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 
 const DATA_DIR = path.join(__dirname, '../data');
 const DB_FILE = path.join(DATA_DIR, 'sightings.db');
@@ -27,30 +27,30 @@ function ensureDirs() {
 }
 
 function run(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function onRun(err) {
-      if (err) return reject(err);
-      resolve(this);
-    });
-  });
+  try {
+    const info = db.prepare(sql).run(params);
+    return Promise.resolve(info);
+  } catch (err) {
+    return Promise.reject(err);
+  }
 }
 
 function all(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) return reject(err);
-      resolve(rows || []);
-    });
-  });
+  try {
+    const rows = db.prepare(sql).all(params);
+    return Promise.resolve(rows);
+  } catch (err) {
+    return Promise.reject(err);
+  }
 }
 
 function get(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) return reject(err);
-      resolve(row || null);
-    });
-  });
+  try {
+    const row = db.prepare(sql).get(params);
+    return Promise.resolve(row || null);
+  } catch (err) {
+    return Promise.reject(err);
+  }
 }
 
 function toPhotoUrl(photoPath) {
@@ -127,7 +127,7 @@ async function ensureInit() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
     ensureDirs();
-    db = new sqlite3.Database(DB_FILE);
+    db = new Database(DB_FILE);
 
     await run(
       `CREATE TABLE IF NOT EXISTS sightings (

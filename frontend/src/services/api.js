@@ -17,19 +17,6 @@ export const getOvation = () => api.get('/spaceweather/ovation').then(r => r.dat
 export const getKpForecast = () => api.get('/spaceweather/kp-forecast').then(r => r.data);
 export const getBzHistory = () => api.get('/spaceweather/bz-history').then(r => r.data);
 export const getLatestSubstorm = () => api.get('/spaceweather/substorm/latest').then(r => r.data);
-export const getSubstormProfile = () => api.get('/spaceweather/substorm/profile').then(r => r.data);
-export async function setSubstormProfile(profile) {
-  try {
-    return (await api.get('/spaceweather/substorm/profile/set', { params: { profile } })).data;
-  } catch {
-    try {
-      return (await api.patch('/spaceweather/substorm/profile', { profile })).data;
-    } catch {
-      // Some proxies reject PATCH; fallback to POST.
-      return (await api.post('/spaceweather/substorm/profile', { profile })).data;
-    }
-  }
-}
 
 export const getVisibility = (lat, lon, bortle = 5) =>
   api.get('/visibility', { params: { lat, lon, bortle } }).then(r => r.data);

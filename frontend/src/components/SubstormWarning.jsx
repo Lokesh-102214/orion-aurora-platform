@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { getSubstormProfile, setSubstormProfile } from '../services/api';
 
 function timeSince(ts, nowMs = Date.now()) {
   if (!ts) return '';
@@ -92,7 +91,6 @@ function computeAlertBadge(substormAlert, noaaAlerts) {
 
 export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSubstorm }) {
   const [nowMs, setNowMs] = useState(Date.now());
-  const [profile, setProfile] = useState('lenient');
   const hasAlerts = noaaAlerts && noaaAlerts.length > 0;
   const badge = computeAlertBadge(substormAlert, noaaAlerts);
 
@@ -101,51 +99,10 @@ export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSu
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    getSubstormProfile()
-      .then((data) => {
-        const p = String(data?.profile || '').toLowerCase();
-        if (p === 'strict' || p === 'lenient') setProfile(p);
-      })
-      .catch(() => {});
-  }, []);
-
-  async function handleToggleProfile() {
-    const next = profile === 'strict' ? 'lenient' : 'strict';
-    setProfile(next);
-    try {
-      const data = await setSubstormProfile(next);
-      const p = String(data?.profile || next).toLowerCase();
-      if (p === 'strict' || p === 'lenient') setProfile(p);
-    } catch {
-      // Keep optimistic toggle state; backend sync will correct on next fetch.
-    }
-  }
-
   return (
     <div className="panel">
       <div className="panel-title">
         Alerts
-        <button
-          onClick={handleToggleProfile}
-          title="Toggle substorm sensitivity profile"
-          style={{
-            float: 'right',
-            marginRight: 6,
-            borderRadius: 8,
-            border: '1px solid var(--border)',
-            background: profile === 'lenient' ? 'rgba(0,188,212,0.16)' : 'rgba(255,171,64,0.16)',
-            color: profile === 'lenient' ? 'var(--info)' : 'var(--warning)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 9,
-            fontWeight: 700,
-            letterSpacing: '0.05em',
-            padding: '0 6px',
-            cursor: 'pointer',
-          }}
-        >
-          {profile === 'lenient' ? 'LENIENT' : 'STRICT'}
-        </button>
         <span style={{
           float: 'right',
           borderRadius: 10,

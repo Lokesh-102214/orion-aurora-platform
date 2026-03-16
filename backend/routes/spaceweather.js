@@ -1,6 +1,6 @@
 const express = require('express');
 const { getCache, isDataStale } = require('../services/noaaPoller');
-const { getBzHistory, getLatestSubstormAlert, getSubstormProfile, setSubstormProfile } = require('../services/substormDetector');
+const { getBzHistory, getLatestSubstormAlert } = require('../services/substormDetector');
 
 const router = express.Router();
 
@@ -53,34 +53,5 @@ router.get('/kp-forecast', (req, res) => {
 router.get('/substorm/latest', (req, res) => {
   res.json({ substorm: getLatestSubstormAlert() });
 });
-
-// GET /api/spaceweather/substorm/profile
-router.get('/substorm/profile', (_req, res) => {
-  res.json({ profile: getSubstormProfile() });
-});
-
-// GET /api/spaceweather/substorm/profile/set?profile=strict|lenient
-// Simple query-based toggle endpoint (method/body agnostic for restrictive proxies).
-router.get('/substorm/profile/set', (req, res) => {
-  const result = setSubstormProfile(req.query?.profile);
-  if (!result.ok) {
-    return res.status(400).json({ error: result.error });
-  }
-  return res.json({ profile: result.profile, changed: result.changed });
-});
-
-function updateSubstormProfile(req, res) {
-  const incomingProfile = req.body?.profile ?? req.query?.profile;
-  const result = setSubstormProfile(incomingProfile);
-  if (!result.ok) {
-    return res.status(400).json({ error: result.error });
-  }
-  return res.json({ profile: result.profile, changed: result.changed });
-}
-
-// PATCH /api/spaceweather/substorm/profile
-router.patch('/substorm/profile', updateSubstormProfile);
-// POST /api/spaceweather/substorm/profile (fallback for environments blocking PATCH)
-router.post('/substorm/profile', updateSubstormProfile);
 
 module.exports = router;

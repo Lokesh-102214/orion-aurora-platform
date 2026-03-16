@@ -20,10 +20,14 @@ export const getLatestSubstorm = () => api.get('/spaceweather/substorm/latest').
 export const getSubstormProfile = () => api.get('/spaceweather/substorm/profile').then(r => r.data);
 export async function setSubstormProfile(profile) {
   try {
-    return (await api.patch('/spaceweather/substorm/profile', { profile })).data;
+    return (await api.get('/spaceweather/substorm/profile/set', { params: { profile } })).data;
   } catch {
-    // Some proxies reject PATCH; fallback to POST.
-    return (await api.post('/spaceweather/substorm/profile', { profile })).data;
+    try {
+      return (await api.patch('/spaceweather/substorm/profile', { profile })).data;
+    } catch {
+      // Some proxies reject PATCH; fallback to POST.
+      return (await api.post('/spaceweather/substorm/profile', { profile })).data;
+    }
   }
 }
 

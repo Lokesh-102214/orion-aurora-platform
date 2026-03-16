@@ -113,14 +113,17 @@ export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSu
 
   async function handleToggleProfile() {
     if (switchingProfile) return;
+    const prev = profile;
     const next = profile === 'strict' ? 'lenient' : 'strict';
+    setProfile(next);
     setSwitchingProfile(true);
     try {
       const data = await setSubstormProfile(next);
       const p = String(data?.profile || next).toLowerCase();
       if (p === 'strict' || p === 'lenient') setProfile(p);
     } catch {
-      // Ignore transient network errors; current profile remains unchanged.
+      // Revert on failure.
+      setProfile(prev);
     } finally {
       setSwitchingProfile(false);
     }

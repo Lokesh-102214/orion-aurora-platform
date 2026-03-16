@@ -59,6 +59,16 @@ router.get('/substorm/profile', (_req, res) => {
   res.json({ profile: getSubstormProfile() });
 });
 
+// GET /api/spaceweather/substorm/profile/set?profile=strict|lenient
+// Simple query-based toggle endpoint (method/body agnostic for restrictive proxies).
+router.get('/substorm/profile/set', (req, res) => {
+  const result = setSubstormProfile(req.query?.profile);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error });
+  }
+  return res.json({ profile: result.profile, changed: result.changed });
+});
+
 function updateSubstormProfile(req, res) {
   const incomingProfile = req.body?.profile ?? req.query?.profile;
   const result = setSubstormProfile(incomingProfile);

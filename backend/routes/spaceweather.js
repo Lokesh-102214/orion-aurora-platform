@@ -1,6 +1,6 @@
 const express = require('express');
 const { getCache, isDataStale } = require('../services/noaaPoller');
-const { getBzHistory, getLatestSubstormAlert } = require('../services/substormDetector');
+const { getBzHistory, getLatestSubstormAlert, getSubstormProfile, setSubstormProfile } = require('../services/substormDetector');
 
 const router = express.Router();
 
@@ -52,6 +52,20 @@ router.get('/kp-forecast', (req, res) => {
 // GET /api/spaceweather/substorm/latest
 router.get('/substorm/latest', (req, res) => {
   res.json({ substorm: getLatestSubstormAlert() });
+});
+
+// GET /api/spaceweather/substorm/profile
+router.get('/substorm/profile', (_req, res) => {
+  res.json({ profile: getSubstormProfile() });
+});
+
+// PATCH /api/spaceweather/substorm/profile
+router.patch('/substorm/profile', (req, res) => {
+  const result = setSubstormProfile(req.body?.profile);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error });
+  }
+  return res.json({ profile: result.profile, changed: result.changed });
 });
 
 module.exports = router;

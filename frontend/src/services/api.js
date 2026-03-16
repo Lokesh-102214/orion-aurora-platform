@@ -17,6 +17,9 @@ export const getOvation = () => api.get('/spaceweather/ovation').then(r => r.dat
 export const getKpForecast = () => api.get('/spaceweather/kp-forecast').then(r => r.data);
 export const getBzHistory = () => api.get('/spaceweather/bz-history').then(r => r.data);
 export const getLatestSubstorm = () => api.get('/spaceweather/substorm/latest').then(r => r.data);
+export const getSubstormProfile = () => api.get('/spaceweather/substorm/profile').then(r => r.data);
+export const setSubstormProfile = (profile) =>
+  api.patch('/spaceweather/substorm/profile', { profile }).then(r => r.data);
 
 export const getVisibility = (lat, lon, bortle = 5) =>
   api.get('/visibility', { params: { lat, lon, bortle } }).then(r => r.data);

@@ -5,7 +5,7 @@ const WEATHER_POLL_MS  = 60  * 1000;   // 60s — matches backend cron
 const OVATION_POLL_MS  = 30  * 60 * 1000; // 30 min — matches NOAA cadence
 const WEATHER_CACHE_KEY = 'aurora:last-spaceweather';
 const OVATION_CACHE_KEY = 'aurora:last-ovation';
-const MAX_SUBSTORM_ALERT_AGE_MS = 20 * 60 * 1000;
+const MAX_SUBSTORM_ALERT_AGE_MS = 60 * 60 * 1000;
 
 function safeReadCache(key) {
   try {

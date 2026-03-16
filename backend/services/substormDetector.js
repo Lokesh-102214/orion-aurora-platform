@@ -161,9 +161,8 @@ function startSubstormMonitor(broadcast) {
       activeEventId = null;
       latestSubstormAlert = null;
     } else {
-      const previousLevel = activeLevel;
       activeLevel = next.level;
-      if (!activeEventId || previousLevel !== activeLevel) {
+      if (!activeEventId) {
         activeEventId = buildEventId(activeLevel);
       }
       latestSubstormAlert = {
@@ -176,6 +175,12 @@ function startSubstormMonitor(broadcast) {
       };
 
       if (shouldBroadcast(activeLevel, cfg)) {
+        // Rotate event ID for each rebroadcast so dismissed alerts can reappear on fresh broadcasts.
+        activeEventId = buildEventId(activeLevel);
+        latestSubstormAlert = {
+          ...latestSubstormAlert,
+          eventId: activeEventId,
+        };
         console.log(`[substormDetector] ALERT: ${latestSubstormAlert.level} — ${latestSubstormAlert.message}`);
         broadcastFn('substorm_alert', latestSubstormAlert);
         lastBroadcastLevel = activeLevel;

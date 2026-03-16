@@ -8,6 +8,14 @@ export default function RoutingPanel({ position, onRouteFound }) {
   const [mode,    setMode]    = useState('test');
   const [radiusKm, setRadiusKm] = useState(20000);
 
+  function formatRoutingError(err) {
+    const message = String(err?.message || '').toLowerCase();
+    if (message.includes('timeout')) {
+      return 'Routing request took too long. Please try again.';
+    }
+    return err?.message || 'Unable to fetch route right now. Please try again.';
+  }
+
   async function handleSearch() {
     if (!position) return;
     setLoading(true); setError(null); setResult(null);
@@ -23,7 +31,7 @@ export default function RoutingPanel({ position, onRouteFound }) {
         });
       }
     } catch (err) {
-      setError(err.message);
+      setError(formatRoutingError(err));
     } finally {
       setLoading(false);
     }

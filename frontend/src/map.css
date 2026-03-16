@@ -113,6 +113,14 @@
   gap: 1px;
 }
 
+.sidebar-toggle-btn {
+  display: none;
+}
+
+.sidebar-mobile-head {
+  display: none;
+}
+
 .map-area {
   position: relative;
   overflow: hidden;
@@ -401,7 +409,8 @@
 @media (max-width: 768px) {
   .app-shell {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr 52vh;
+    grid-template-rows: auto minmax(44vh, 1fr) minmax(34vh, 48vh);
+    height: 100dvh;
   }
 
   .app-header {
@@ -427,6 +436,10 @@
     padding-bottom: 2px;
   }
 
+  .sidebar-toggle-btn {
+    display: inline-flex;
+  }
+
   .header-right::-webkit-scrollbar {
     height: 3px;
   }
@@ -443,18 +456,61 @@
   }
 
   .sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: min(72dvh, 560px);
     grid-row: 3;
     border-right: none;
     border-top: 1px solid var(--border);
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: linear-gradient(180deg, rgba(10, 15, 30, 0.96), rgba(10, 15, 30, 1));
+    transform: translateY(calc(100% - 44px));
+    transition: transform 0.2s ease;
+    z-index: 900;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateY(0);
+  }
+
+  .sidebar-mobile-head {
+    position: sticky;
+    top: 0;
+    z-index: 7;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(5, 8, 16, 0.92);
+    backdrop-filter: blur(8px);
+  }
+
+  .sidebar-mobile-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .sidebar-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    backdrop-filter: blur(8px);
   }
 
   .panel {
-    min-width: 260px;
-    border-bottom: none;
-    border-right: 1px solid var(--border);
+    min-width: 0;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 12px;
   }
 
   .panel-title {

@@ -115,11 +115,6 @@ export default function VisibilityScore({ visibility, loadingScore, position }) 
                 </div>
               )}
               <BortleBadge bortle={meta?.bortle} radiance={meta?.radiance} source={meta?.bortleSource} />
-              {meta?.bortleSource?.includes('fallback') && (
-                <div style={{ marginTop: 5, fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--warning)' }}>
-                  Bortle fetch unavailable, using default Bortle 5 fallback.
-                </div>
-              )}
             </div>
           </div>
 

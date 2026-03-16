@@ -73,6 +73,7 @@ export default function App() {
   const [visibilityAlert,   setVisibilityAlert]    = useState(null);
   const [viewerInstance,    setViewerInstance]     = useState(null);
   const [loadGlobe,         setLoadGlobe]          = useState(false);
+  const [sidebarOpen,       setSidebarOpen]        = useState(false);
 
   // SSE event source ref for sightings
   const [esRef, setEsRef] = useState(null);
@@ -114,6 +115,7 @@ export default function App() {
 
   const handleMapClick = useCallback((coords) => {
     setPosition(coords);
+    setSidebarOpen(false);
   }, [setPosition]);
 
   const handleMapRightClick = useCallback((coords) => {
@@ -171,6 +173,13 @@ export default function App() {
           </div>
         )}
         <div className="header-right">
+          <button
+            className="icon-btn sidebar-toggle-btn"
+            onClick={() => setSidebarOpen(v => !v)}
+            title="Toggle data sidebar"
+          >
+            {sidebarOpen ? 'HIDE PANELS' : 'SHOW PANELS'}
+          </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div className="status-dot" style={{ background: statusColor }} />
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>
@@ -206,7 +215,17 @@ export default function App() {
       </header>
 
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <aside className="sidebar">
+      <aside className={`sidebar${sidebarOpen ? ' mobile-open' : ''}`}>
+        <div className="sidebar-mobile-head">
+          <div className="sidebar-mobile-title">Data Panels</div>
+          <button
+            className="icon-btn"
+            onClick={() => setSidebarOpen(false)}
+            title="Close panels"
+          >
+            CLOSE
+          </button>
+        </div>
         {/* Tab bar */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg-space)' }}>
           {TABS.map(tab => (

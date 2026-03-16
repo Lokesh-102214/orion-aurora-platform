@@ -33,6 +33,21 @@ function resolveRoutingConstraints(mode) {
   return mode === 'test' ? ROUTING_PROFILES.test : ROUTING_PROFILES.strict;
 }
 
+async function getBortleForRouting(lat, lon) {
+  try {
+    const result = await getBortleForLocation(lat, lon);
+    if (typeof result?.bortle === 'number') return result;
+  } catch {
+    // Fallback below keeps routing available when the provider is unstable.
+  }
+  return {
+    bortle: 5,
+    source: 'fallback-routing',
+    reason: 'bortle_unavailable',
+    placeType: 'unknown',
+  };
+}
+
 function haversineKm(lat1, lon1, lat2, lon2) {
   const toRad = d => (d * Math.PI) / 180;
   const R = 6371;
@@ -227,7 +242,7 @@ async function findBestNearbyPoint(lat, lon, ovationPoints, radiusKm = 200, opti
   for (let i = 0; i < clearCandidates.length; i += CHUNK_SIZE) {
     const chunk = clearCandidates.slice(i, i + CHUNK_SIZE);
     const withBortle = await Promise.all(chunk.map(async c => {
-      const b = await getBortleForLocation(c.lat, c.lon);
+      const b = await getBortleForRouting(c.lat, c.lon);
       return { ...c, bortle: b.bortle, bortleSource: b.source };
     }));
 

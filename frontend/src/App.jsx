@@ -75,7 +75,7 @@ export default function App() {
 
   const [nightVision,       setNightVision]       = useState(false);
   const [activeSubstorm,    setActiveSubstorm]     = useState(null);
-  const [dismissedSubstormTs, setDismissedSubstormTs] = useState(null);
+  const [dismissedSubstormEventId, setDismissedSubstormEventId] = useState(null);
   const [routeGeometry,     setRouteGeometry]      = useState(null);
   const [destination,       setDestination]        = useState(null);
   const [activeTab,         setActiveTab]          = useState('data');
@@ -143,14 +143,19 @@ export default function App() {
 
   // Substorm
   useEffect(() => {
-    const alertTs = substormAlert?.ts || null;
-    const currentTs = activeSubstorm?.ts || null;
-    if (substormAlert && alertTs !== dismissedSubstormTs && alertTs !== currentTs) {
+    if (!substormAlert) {
+      setActiveSubstorm(null);
+      return;
+    }
+
+    const alertEventId = substormAlert?.eventId || substormAlert?.ts || null;
+    const currentEventId = activeSubstorm?.eventId || activeSubstorm?.ts || null;
+    if (substormAlert && alertEventId && alertEventId !== dismissedSubstormEventId && alertEventId !== currentEventId) {
       setActiveSubstorm(substormAlert);
       if (navigator.vibrate && substormAlert.level === 'SEVERE') navigator.vibrate([200,100,200]);
       playAlertTone(substormAlert.level);
     }
-  }, [substormAlert, dismissedSubstormTs, activeSubstorm]);
+  }, [substormAlert, dismissedSubstormEventId, activeSubstorm]);
 
   const statusColor = loading ? 'var(--warning)' : isStale ? 'var(--warning)' : 'var(--success)';
 
@@ -257,7 +262,7 @@ export default function App() {
         {activeTab === 'data' && (
           <>
             <SubstormWarning substormAlert={activeSubstorm} noaaAlerts={alerts}
-              onDismissSubstorm={() => { setDismissedSubstormTs(activeSubstorm?.ts || null); setActiveSubstorm(null); }} />
+              onDismissSubstorm={() => { setDismissedSubstormEventId(activeSubstorm?.eventId || activeSubstorm?.ts || null); setActiveSubstorm(null); }} />
             <SolarWindPanel solarWind={solarWind} kp={kp} dataSource={dataSource} isStale={isStale} />
             <VisibilityScore visibility={visibility} loadingScore={loadingScore} position={position} />
             <PhotographyAdvisor kp={kp} visibility={visibility} />

@@ -51,7 +51,11 @@ export function useSpaceWeather() {
         setSubstormAlert(normalizeSubstormAlert(data.substorm_latest));
       } else {
         const substormRes = await getLatestSubstorm().catch(() => null);
-        if (substormRes?.substorm) setSubstormAlert(normalizeSubstormAlert(substormRes.substorm));
+        if (substormRes?.substorm) {
+          setSubstormAlert(normalizeSubstormAlert(substormRes.substorm));
+        } else {
+          setSubstormAlert(null);
+        }
       }
       setDataSource(data.source || 'DSCOVR');
       setIsStale(data.stale?.solar_wind || false);

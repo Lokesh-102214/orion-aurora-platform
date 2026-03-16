@@ -24,7 +24,7 @@ const MONITOR_INTERVAL_MS = 60000; // 1 minute
 const WATCH_CONSECUTIVE_REQUIRED = 3;
 const QUIET_CLEAR_REQUIRED = 3;
 const SAME_LEVEL_REBROADCAST_MS = 10 * 60 * 1000;
-const MAX_WATCH_DURATION_MS = 10 * 60 * 1000;
+const MAX_ACTIVE_ALERT_AGE_MS = 20 * 60 * 1000;
 
 const HYSTERESIS = {
   severe: { bz: -4.5, speed: 470 },
@@ -36,7 +36,6 @@ const bzHistory = [];
 let latestSubstormAlert = null;
 let activeLevel = null;
 let activeEventId = null;
-let watchStartedAt = null;
 let watchRateBreachCount = 0;
 let quietSampleCount = 0;
 let lastBroadcastLevel = null;
@@ -136,6 +135,13 @@ function shouldBroadcast(nextLevel) {
   return now - lastBroadcastTs >= SAME_LEVEL_REBROADCAST_MS;
 }
 
+function isFreshAlert(alert) {
+  if (!alert?.ts) return false;
+  const ts = Date.parse(alert.ts);
+  if (!Number.isFinite(ts)) return false;
+  return Date.now() - ts <= MAX_ACTIVE_ALERT_AGE_MS;
+}
+
 function buildEventId(level) {
   return `substorm_${level.toLowerCase()}_${Date.now()}`;
 }
@@ -145,6 +151,12 @@ function startSubstormMonitor(broadcast) {
   console.log('[substormDetector] monitor started');
 
   setInterval(() => {
+    if (latestSubstormAlert && !isFreshAlert(latestSubstormAlert)) {
+      latestSubstormAlert = null;
+      activeLevel = null;
+      activeEventId = null;
+    }
+
     const cache = getCache();
     const sw = cache.solar_wind;
     if (!sw) return;
@@ -159,22 +171,7 @@ function startSubstormMonitor(broadcast) {
 
     const bzRate = computeDerivative(bzHistory);
     const candidate = candidateLevel(bz, bzRate, speed);
-    let next = applyStateMachine(candidate, bz, bzRate, speed);
-
-    const now = Date.now();
-    if (next?.level === 'WATCH') {
-      if (activeLevel !== 'WATCH') {
-        watchStartedAt = now;
-      } else if (watchStartedAt && (now - watchStartedAt) > MAX_WATCH_DURATION_MS) {
-        // Prevent stale watch banners from persisting indefinitely.
-        next = null;
-        watchStartedAt = null;
-        watchRateBreachCount = 0;
-        quietSampleCount = QUIET_CLEAR_REQUIRED;
-      }
-    } else {
-      watchStartedAt = null;
-    }
+    const next = applyStateMachine(candidate, bz, bzRate, speed);
 
     if (!next) {
       activeLevel = null;
@@ -215,6 +212,12 @@ function startSubstormMonitor(broadcast) {
 }
 
 function getBzHistory() { return bzHistory; }
-function getLatestSubstormAlert() { return latestSubstormAlert; }
+function getLatestSubstormAlert() {
+  if (!isFreshAlert(latestSubstormAlert)) {
+    latestSubstormAlert = null;
+    return null;
+  }
+  return latestSubstormAlert;
+}
 
 module.exports = { startSubstormMonitor, getBzHistory, getLatestSubstormAlert };

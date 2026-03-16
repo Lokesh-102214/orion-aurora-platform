@@ -9,7 +9,8 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import * as Cesium from 'cesium';
+
+const Cesium = window.Cesium;
 
 // ── Sighting form modal ───────────────────────────────────────────────────────
 export function SightingForm({ position, kp, score, onSubmit, onClose }) {

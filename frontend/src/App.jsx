@@ -150,7 +150,21 @@ export default function App() {
 
     const alertEventId = substormAlert?.eventId || substormAlert?.ts || null;
     const currentEventId = activeSubstorm?.eventId || activeSubstorm?.ts || null;
-    if (substormAlert && alertEventId && alertEventId !== dismissedSubstormEventId && alertEventId !== currentEventId) {
+    if (!alertEventId || alertEventId === dismissedSubstormEventId) return;
+
+    // Same event: refresh payload (bz/bzRate/message/ts) without retriggering sound/vibration.
+    if (alertEventId === currentEventId) {
+      const changed =
+        substormAlert.ts !== activeSubstorm?.ts ||
+        substormAlert.message !== activeSubstorm?.message ||
+        substormAlert.bz !== activeSubstorm?.bz ||
+        substormAlert.bzRate !== activeSubstorm?.bzRate ||
+        substormAlert.level !== activeSubstorm?.level;
+      if (changed) setActiveSubstorm(substormAlert);
+      return;
+    }
+
+    if (substormAlert && alertEventId !== currentEventId) {
       setActiveSubstorm(substormAlert);
       if (navigator.vibrate && substormAlert.level === 'SEVERE') navigator.vibrate([200,100,200]);
       playAlertTone(substormAlert.level);

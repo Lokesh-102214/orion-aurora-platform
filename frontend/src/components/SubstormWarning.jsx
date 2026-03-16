@@ -1,16 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-function timeSince(ts) {
+function timeSince(ts, nowMs = Date.now()) {
   if (!ts) return '';
   const baseTs = typeof ts === 'number' ? ts : Date.parse(ts);
-  if (!Number.isFinite(baseTs)) return 'just now';
-  const secs = Math.max(0, Math.floor((Date.now() - baseTs) / 1000));
+  if (!Number.isFinite(baseTs)) return '—';
+  const secs = Math.max(0, Math.floor((nowMs - baseTs) / 1000));
   if (secs < 60)  return `${secs}s ago`;
   if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
   return `${Math.floor(secs / 3600)}h ago`;
 }
 
-function AlertBanner({ alert, onDismiss }) {
+function AlertBanner({ alert, onDismiss, nowMs }) {
   const level = alert.level?.toLowerCase();
   return (
     <div className={`alert-banner ${level}`}>
@@ -24,7 +24,7 @@ function AlertBanner({ alert, onDismiss }) {
         </div>
         <div style={{ marginTop: 4, display: 'flex', gap: 12 }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)' }}>
-            Bz {alert.bz?.toFixed(1)} nT · {alert.speed ? `${Math.round(alert.speed)} km/s` : ''} · {timeSince(alert.ts || alert.receivedAt)}
+            Bz {alert.bz?.toFixed(1)} nT · {alert.speed ? `${Math.round(alert.speed)} km/s` : ''} · {timeSince(alert.ts || alert.receivedAt, nowMs)}
           </span>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)' }}>
             Confidence: {alert.confidence}
@@ -90,8 +90,14 @@ function computeAlertBadge(substormAlert, noaaAlerts) {
 }
 
 export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSubstorm }) {
+  const [nowMs, setNowMs] = useState(Date.now());
   const hasAlerts = noaaAlerts && noaaAlerts.length > 0;
   const badge = computeAlertBadge(substormAlert, noaaAlerts);
+
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 15000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <div className="panel">
@@ -113,7 +119,7 @@ export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSu
       </div>
 
       {substormAlert && (
-        <AlertBanner alert={substormAlert} onDismiss={onDismissSubstorm} />
+        <AlertBanner alert={substormAlert} onDismiss={onDismissSubstorm} nowMs={nowMs} />
       )}
 
       {!substormAlert && !hasAlerts && (

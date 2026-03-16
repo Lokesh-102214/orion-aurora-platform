@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 function timeSince(ts) {
   if (!ts) return '';
@@ -22,7 +22,7 @@ function AlertBanner({ alert, onDismiss }) {
         </div>
         <div style={{ marginTop: 4, display: 'flex', gap: 12 }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)' }}>
-            Bz {alert.bz?.toFixed(1)} nT · {alert.speed ? `${Math.round(alert.speed)} km/s` : ''} · {timeSince(alert.receivedAt)}
+            Bz {alert.bz?.toFixed(1)} nT · {alert.speed ? `${Math.round(alert.speed)} km/s` : ''} · {timeSince(alert.ts || alert.receivedAt)}
           </span>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)' }}>
             Confidence: {alert.confidence}
@@ -71,6 +71,9 @@ function computeAlertBadge(substormAlert, noaaAlerts) {
 
   if (substormAlert?.level === 'SEVERE' || substormAlert?.level === 'WARNING') {
     return { label: 'SUBSTORM', color: 'var(--danger)', bg: 'rgba(255,82,82,0.14)', border: 'rgba(255,82,82,0.35)' };
+  }
+  if (substormAlert?.level === 'WATCH') {
+    return { label: 'WATCH', color: 'var(--info)', bg: 'rgba(0,188,212,0.14)', border: 'rgba(0,188,212,0.35)' };
   }
   if (hasWarnings) {
     return { label: 'WARN', color: 'var(--warning)', bg: 'rgba(255,171,64,0.14)', border: 'rgba(255,171,64,0.35)' };

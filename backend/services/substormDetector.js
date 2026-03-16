@@ -57,22 +57,26 @@ function startSubstormMonitor(broadcast) {
   setInterval(() => {
     const cache = getCache();
     const sw = cache.solar_wind;
-    if (!sw || !sw.bz) return;
+    if (!sw) return;
+
+    const bz = Number(sw.bz);
+    const speed = Number(sw.speed || 400);
+    if (!Number.isFinite(bz)) return;
 
     // Append to history
-    bzHistory.push({ ts: Date.now(), bz: sw.bz, speed: sw.speed || 400 });
+    bzHistory.push({ ts: Date.now(), bz, speed });
     if (bzHistory.length > HISTORY_LENGTH) bzHistory.shift();
 
     const bzRate = computeDerivative(bzHistory);
-    const alert = classifyAlert(sw.bz, bzRate, sw.speed);
+    const alert = classifyAlert(bz, bzRate, speed);
 
     if (alert && !alertCooldown) {
       console.log(`[substormDetector] ALERT: ${alert.level} — ${alert.message}`);
       latestSubstormAlert = {
         ...alert,
-        bz: sw.bz,
+        bz,
         bzRate,
-        speed: sw.speed,
+        speed,
         ts: new Date().toISOString(),
       };
       broadcastFn('substorm_alert', latestSubstormAlert);
@@ -84,9 +88,9 @@ function startSubstormMonitor(broadcast) {
 
     // Always broadcast current telemetry for live gauge
     broadcastFn('solar_wind_update', {
-      bz: sw.bz,
+      bz,
       bzRate: parseFloat(bzRate.toFixed(2)),
-      speed: sw.speed,
+      speed,
       kp: cache.kp?.kp,
       ts: new Date().toISOString(),
     });

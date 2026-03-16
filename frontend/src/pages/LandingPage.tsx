@@ -164,8 +164,14 @@ export default function LandingPage() {
 
       <section id="community" className="relative min-h-[70vh] overflow-hidden">
         <img
-          src="https://source.unsplash.com/1600x900/?aurora,borealis"
+          src="https://images.unsplash.com/photo-1579033385971-a7bc023f0f9c?auto=format&fit=crop&w=1600&q=80"
           alt="Aurora over mountains"
+          onError={(e) => {
+            const img = e.currentTarget as HTMLImageElement;
+            if (img.dataset.fallback) return;
+            img.dataset.fallback = '1';
+            img.src = 'https://images.unsplash.com/photo-1483347756197-71ef80e95f73?auto=format&fit=crop&w=1600&q=80';
+          }}
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-background/60" />

@@ -33,6 +33,14 @@ export function useSpaceWeather() {
   const [dataSource,   setDataSource]   = useState('DSCOVR');
   const lastOvationFetch = useRef(0);
 
+  function normalizeSubstormAlert(alert) {
+    if (!alert) return null;
+    return {
+      ...alert,
+      ts: alert.ts || new Date().toISOString(),
+    };
+  }
+
   const fetchWeather = useCallback(async () => {
     try {
       const data = await getSpaceWeather();
@@ -40,10 +48,10 @@ export function useSpaceWeather() {
       setKp(data.kp);
       setAlerts(data.alerts || []);
       if (data.substorm_latest) {
-        setSubstormAlert({ ...data.substorm_latest, receivedAt: Date.now() });
+        setSubstormAlert(normalizeSubstormAlert(data.substorm_latest));
       } else {
         const substormRes = await getLatestSubstorm().catch(() => null);
-        if (substormRes?.substorm) setSubstormAlert({ ...substormRes.substorm, receivedAt: Date.now() });
+        if (substormRes?.substorm) setSubstormAlert(normalizeSubstormAlert(substormRes.substorm));
       }
       setDataSource(data.source || 'DSCOVR');
       setIsStale(data.stale?.solar_wind || false);
@@ -59,7 +67,7 @@ export function useSpaceWeather() {
         setKp(cached.kp || null);
         setAlerts(cached.alerts || []);
         if (cached.substorm_latest) {
-          setSubstormAlert(prev => prev || { ...cached.substorm_latest, receivedAt: Date.now() });
+          setSubstormAlert(prev => prev || normalizeSubstormAlert(cached.substorm_latest));
         }
       }
     } finally {
@@ -97,7 +105,7 @@ export function useSpaceWeather() {
         setIsStale(false);
       },
       substorm_alert: (data) => {
-        setSubstormAlert({ ...data, receivedAt: Date.now() });
+        setSubstormAlert(normalizeSubstormAlert(data));
         if (data.level === 'WATCH') setTimeout(() => setSubstormAlert(null), 10 * 60 * 1000);
       },
       onError: () => setIsStale(true),

@@ -15,6 +15,17 @@ import { API_BASE }       from './services/api';
 
 const CesiumGlobe = lazy(() => import('./components/CesiumGlobe'));
 
+const API_ORIGIN = (/^https?:\/\//i.test(API_BASE))
+  ? API_BASE.replace(/\/api\/?$/, '')
+  : '';
+
+function resolveSightingPhotoUrl(photoUrl) {
+  if (!photoUrl) return null;
+  if (/^(https?:)?\/\//i.test(photoUrl) || photoUrl.startsWith('data:')) return photoUrl;
+  if (photoUrl.startsWith('/') && API_ORIGIN) return `${API_ORIGIN}${photoUrl}`;
+  return photoUrl;
+}
+
 function OfflineBanner() {
   const [offline, setOffline] = useState(!navigator.onLine);
   useEffect(() => {
@@ -57,14 +68,14 @@ function playAlertTone(level = 'WATCH') {
 export default function App() {
   const {
     solarWind, kp, ovation, alerts, substormAlert,
-    loading, isStale, dataSource, refreshOvation,
+    loading, isStale, dataSource,
   } = useSpaceWeather();
 
-  const { position, setPosition, useDetectedLocation, visibility, geoError, loadingScore, refetch: refetchScore } = useVisibility();
+  const { position, setPosition, useDetectedLocation, visibility, loadingScore, refetch: refetchScore } = useVisibility();
 
   const [nightVision,       setNightVision]       = useState(false);
   const [activeSubstorm,    setActiveSubstorm]     = useState(null);
-  const [dismissedTs,       setDismissedTs]        = useState(null);
+  const [dismissedSubstormTs, setDismissedSubstormTs] = useState(null);
   const [routeGeometry,     setRouteGeometry]      = useState(null);
   const [destination,       setDestination]        = useState(null);
   const [activeTab,         setActiveTab]          = useState('data');
@@ -108,7 +119,7 @@ export default function App() {
   }, []);
 
   // Sightings (fetched + SSE-updated)
-  const { sightings, addSighting } = useSightings(esRef);
+  const { sightings } = useSightings(esRef);
 
   // Render sighting entities on the globe imperatively.
   useSightingPins(viewerInstance, sightings, showSightingPins);
@@ -132,12 +143,14 @@ export default function App() {
 
   // Substorm
   useEffect(() => {
-    if (substormAlert && substormAlert.receivedAt !== dismissedTs) {
+    const alertTs = substormAlert?.ts || null;
+    const currentTs = activeSubstorm?.ts || null;
+    if (substormAlert && alertTs !== dismissedSubstormTs && alertTs !== currentTs) {
       setActiveSubstorm(substormAlert);
       if (navigator.vibrate && substormAlert.level === 'SEVERE') navigator.vibrate([200,100,200]);
       playAlertTone(substormAlert.level);
     }
-  }, [substormAlert, dismissedTs]);
+  }, [substormAlert, dismissedSubstormTs, activeSubstorm]);
 
   const statusColor = loading ? 'var(--warning)' : isStale ? 'var(--warning)' : 'var(--success)';
 
@@ -244,7 +257,7 @@ export default function App() {
         {activeTab === 'data' && (
           <>
             <SubstormWarning substormAlert={activeSubstorm} noaaAlerts={alerts}
-              onDismissSubstorm={() => { setDismissedTs(activeSubstorm?.receivedAt); setActiveSubstorm(null); }} />
+              onDismissSubstorm={() => { setDismissedSubstormTs(activeSubstorm?.ts || null); setActiveSubstorm(null); }} />
             <SolarWindPanel solarWind={solarWind} kp={kp} dataSource={dataSource} isStale={isStale} />
             <VisibilityScore visibility={visibility} loadingScore={loadingScore} position={position} />
             <PhotographyAdvisor kp={kp} visibility={visibility} />
@@ -296,7 +309,7 @@ export default function App() {
                     )}
                     {s.photoUrl && (
                       <img
-                        src={s.photoUrl}
+                        src={resolveSightingPhotoUrl(s.photoUrl)}
                         alt="Aurora sighting"
                         loading="lazy"
                         style={{ marginTop: 6, width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }}

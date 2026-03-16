@@ -69,7 +69,7 @@ function BortleBadge({ bortle, radiance, source }) {
       )}
       {isFallback && (
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--warning)', letterSpacing: '0.06em' }}>
-          DEFAULT 5 (FETCH FAIL)
+          DEFAULT 5
         </span>
       )}
     </div>

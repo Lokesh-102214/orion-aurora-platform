@@ -93,7 +93,6 @@ function computeAlertBadge(substormAlert, noaaAlerts) {
 export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSubstorm }) {
   const [nowMs, setNowMs] = useState(Date.now());
   const [profile, setProfile] = useState('lenient');
-  const [switchingProfile, setSwitchingProfile] = useState(false);
   const hasAlerts = noaaAlerts && noaaAlerts.length > 0;
   const badge = computeAlertBadge(substormAlert, noaaAlerts);
 
@@ -112,20 +111,14 @@ export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSu
   }, []);
 
   async function handleToggleProfile() {
-    if (switchingProfile) return;
-    const prev = profile;
     const next = profile === 'strict' ? 'lenient' : 'strict';
     setProfile(next);
-    setSwitchingProfile(true);
     try {
       const data = await setSubstormProfile(next);
       const p = String(data?.profile || next).toLowerCase();
       if (p === 'strict' || p === 'lenient') setProfile(p);
     } catch {
-      // Revert on failure.
-      setProfile(prev);
-    } finally {
-      setSwitchingProfile(false);
+      // Keep optimistic toggle state; backend sync will correct on next fetch.
     }
   }
 
@@ -135,7 +128,6 @@ export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSu
         Alerts
         <button
           onClick={handleToggleProfile}
-          disabled={switchingProfile}
           title="Toggle substorm sensitivity profile"
           style={{
             float: 'right',
@@ -149,10 +141,10 @@ export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSu
             fontWeight: 700,
             letterSpacing: '0.05em',
             padding: '0 6px',
-            cursor: switchingProfile ? 'not-allowed' : 'pointer',
+            cursor: 'pointer',
           }}
         >
-          {switchingProfile ? 'SWITCHING…' : profile === 'lenient' ? 'LENIENT' : 'STRICT'}
+          {profile === 'lenient' ? 'LENIENT' : 'STRICT'}
         </button>
         <span style={{
           float: 'right',

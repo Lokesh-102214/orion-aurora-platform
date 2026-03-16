@@ -18,8 +18,14 @@ export const getKpForecast = () => api.get('/spaceweather/kp-forecast').then(r =
 export const getBzHistory = () => api.get('/spaceweather/bz-history').then(r => r.data);
 export const getLatestSubstorm = () => api.get('/spaceweather/substorm/latest').then(r => r.data);
 export const getSubstormProfile = () => api.get('/spaceweather/substorm/profile').then(r => r.data);
-export const setSubstormProfile = (profile) =>
-  api.patch('/spaceweather/substorm/profile', { profile }).then(r => r.data);
+export async function setSubstormProfile(profile) {
+  try {
+    return (await api.patch('/spaceweather/substorm/profile', { profile })).data;
+  } catch {
+    // Some proxies reject PATCH; fallback to POST.
+    return (await api.post('/spaceweather/substorm/profile', { profile })).data;
+  }
+}
 
 export const getVisibility = (lat, lon, bortle = 5) =>
   api.get('/visibility', { params: { lat, lon, bortle } }).then(r => r.data);

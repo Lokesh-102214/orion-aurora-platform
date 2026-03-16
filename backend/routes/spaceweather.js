@@ -59,13 +59,18 @@ router.get('/substorm/profile', (_req, res) => {
   res.json({ profile: getSubstormProfile() });
 });
 
-// PATCH /api/spaceweather/substorm/profile
-router.patch('/substorm/profile', (req, res) => {
-  const result = setSubstormProfile(req.body?.profile);
+function updateSubstormProfile(req, res) {
+  const incomingProfile = req.body?.profile ?? req.query?.profile;
+  const result = setSubstormProfile(incomingProfile);
   if (!result.ok) {
     return res.status(400).json({ error: result.error });
   }
   return res.json({ profile: result.profile, changed: result.changed });
-});
+}
+
+// PATCH /api/spaceweather/substorm/profile
+router.patch('/substorm/profile', updateSubstormProfile);
+// POST /api/spaceweather/substorm/profile (fallback for environments blocking PATCH)
+router.post('/substorm/profile', updateSubstormProfile);
 
 module.exports = router;

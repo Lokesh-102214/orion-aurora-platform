@@ -19,15 +19,16 @@ const ROUTING_PROFILES = {
     minAuroraPct: 50,
     maxCloudPct: 30,
     maxBortle: 3,
-    maxNearestCandidates: 400,
+    maxNearestCandidates: 250,
   },
   test: {
     minAuroraPct: 0,
     maxCloudPct: 100,
     maxBortle: 9,
-    maxNearestCandidates: 400,
+    maxNearestCandidates: 200,
   },
 };
+const ROUTING_MAX_BORTLE_LOOKUP_MS = 9000;
 
 function resolveRoutingConstraints(mode) {
   return mode === 'test' ? ROUTING_PROFILES.test : ROUTING_PROFILES.strict;
@@ -193,6 +194,9 @@ async function findBestNearbyPoint(lat, lon, ovationPoints, radiusKm = 200, opti
   const radiusDeg = radiusKm / 111;
   const mode = options.mode === 'test' ? 'test' : 'strict';
   const { minAuroraPct, maxCloudPct, maxBortle, maxNearestCandidates } = resolveRoutingConstraints(mode);
+  const maxBortleLookupMs = Number(options.maxBortleLookupMs) > 0
+    ? Number(options.maxBortleLookupMs)
+    : ROUTING_MAX_BORTLE_LOOKUP_MS;
 
   // Step 1: OVATION pre-filter (test mode thresholds) — free, no I/O
   const candidates = [];
@@ -238,8 +242,15 @@ async function findBestNearbyPoint(lat, lon, ovationPoints, radiusKm = 200, opti
 
   // Evaluate in chunks to avoid excessive geocoder traffic while guaranteeing nearest hit.
   const CHUNK_SIZE = 20;
+  const lookupStartTs = Date.now();
   let chosen = null;
+  let lookupTimedOut = false;
   for (let i = 0; i < clearCandidates.length; i += CHUNK_SIZE) {
+    if (Date.now() - lookupStartTs > maxBortleLookupMs) {
+      lookupTimedOut = true;
+      break;
+    }
+
     const chunk = clearCandidates.slice(i, i + CHUNK_SIZE);
     const withBortle = await Promise.all(chunk.map(async c => {
       const b = await getBortleForRouting(c.lat, c.lon);
@@ -258,6 +269,15 @@ async function findBestNearbyPoint(lat, lon, ovationPoints, radiusKm = 200, opti
     darkCandidates.sort((a, b) => a.distanceKm - b.distanceKm);
     chosen = darkCandidates[0];
     break;
+  }
+
+  if (!chosen && lookupTimedOut && clearCandidates.length > 0) {
+    const nearest = clearCandidates[0];
+    chosen = {
+      ...nearest,
+      bortle: 5,
+      bortleSource: 'fallback-routing-time-budget',
+    };
   }
 
   if (!chosen) {

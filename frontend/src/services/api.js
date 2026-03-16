@@ -22,7 +22,10 @@ export const getVisibility = (lat, lon, bortle = 5) =>
   api.get('/visibility', { params: { lat, lon, bortle } }).then(r => r.data);
 
 export const getBestSpot = (lat, lon, radius = 200, mode = 'strict') =>
-  api.get('/routing/best-spot', { params: { lat, lon, radius, mode } }).then(r => r.data);
+  api.get('/routing/best-spot', {
+    params: { lat, lon, radius, mode },
+    timeout: 35000,
+  }).then(r => r.data);
 
 /**
  * Open an SSE stream to /api/stream.

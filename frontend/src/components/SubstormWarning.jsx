@@ -202,9 +202,9 @@ export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSu
 
       <div style={{ background: 'var(--bg-panel)', borderRadius: 6, padding: '8px 10px', marginBottom: 10, marginTop: 10, fontSize: 10, fontFamily: 'var(--font-mono)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
         <div style={{ color: 'var(--text-dim)', marginBottom: 6, letterSpacing: '0.06em', fontWeight: 700 }}>THRESHOLDS ({profile.toUpperCase()})</div>
-        <div>WATCH: dBz/dt &lt; {cfg.watch.rate} ({cfg.watch.cycles} cycles)</div>
-        <div>WARNING: Bz &lt; {cfg.warning.bz} nT</div>
-        <div>SEVERE: speed &gt; {cfg.severe.speed} &amp; Bz &lt; {cfg.severe.bz} nT</div>
+        <div>WATCH: dBz/dt {'<'} {cfg.watch.rate} ({cfg.watch.cycles} cycles)</div>
+        <div>WARNING: Bz {'<'} {cfg.warning.bz} nT</div>
+        <div>SEVERE: speed {'>'} {cfg.severe.speed} {'&'} Bz {'<'} {cfg.severe.bz} nT</div>
         <div style={{ marginTop: 6, color: 'var(--text-dim)', fontSize: 9 }}>
           Re-broadcast: {cfg.rebroadcast} · Stale expiry: {cfg.staleExpiry}
         </div>

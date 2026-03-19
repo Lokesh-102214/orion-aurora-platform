@@ -16,7 +16,6 @@ const PHOTO_DIR = path.join(DATA_DIR, 'sightings_photos');
 
 const MAX_SIGHTINGS = 5000;
 const MAX_PHOTO_BYTES = 1024 * 1024;
-const CLEAR_ON_STARTUP = String(process.env.CLEAR_SIGHTINGS_ON_STARTUP || '').trim() === '1';
 
 let db;
 let initPromise = null;
@@ -124,25 +123,6 @@ async function trimRows() {
   );
 }
 
-async function clearAllSightingsData() {
-  await run('DELETE FROM sightings');
-
-  if (fs.existsSync(PHOTO_DIR)) {
-    for (const file of fs.readdirSync(PHOTO_DIR)) {
-      try {
-        fs.unlinkSync(path.join(PHOTO_DIR, file));
-      } catch {}
-    }
-  }
-
-  // Keep legacy JSON aligned to avoid re-migration of old test entries.
-  try {
-    fs.writeFileSync(LEGACY_JSON_FILE, '[]\n');
-  } catch {}
-
-  console.log('[sightingsStore] cleared sightings data via CLEAR_SIGHTINGS_ON_STARTUP=1');
-}
-
 async function ensureInit() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
@@ -163,13 +143,7 @@ async function ensureInit() {
        )`
     );
     await run('CREATE INDEX IF NOT EXISTS idx_sightings_ts ON sightings(ts DESC)');
-
-    if (CLEAR_ON_STARTUP) {
-      await clearAllSightingsData();
-    } else {
-      await maybeMigrateLegacyJson();
-    }
-
+    await maybeMigrateLegacyJson();
     await trimRows();
   })();
   return initPromise;
@@ -243,6 +217,26 @@ async function getSighting(id) {
   return normalizeRow(row);
 }
 
+async function deleteAllSightings() {
+  await ensureInit();
+  
+  // Delete all photo files
+  try {
+    if (fs.existsSync(PHOTO_DIR)) {
+      const files = fs.readdirSync(PHOTO_DIR);
+      for (const file of files) {
+        fs.unlinkSync(path.join(PHOTO_DIR, file));
+      }
+    }
+  } catch (e) {
+    console.warn('[sightingsStore] failed to delete photos:', e.message);
+  }
+
+  // Delete all database records
+  await run('DELETE FROM sightings');
+  console.log('[sightingsStore] all sightings and photos deleted');
+}
+
 function initSightingsStore(broadcast) {
   broadcastFn = broadcast;
   ensureInit()
@@ -250,4 +244,4 @@ function initSightingsStore(broadcast) {
     .catch((e) => console.warn('[sightingsStore] init failed:', e.message));
 }
 
-module.exports = { initSightingsStore, addSighting, getSightings, getSighting };
+module.exports = { initSightingsStore, addSighting, getSightings, getSighting, deleteAllSightings };

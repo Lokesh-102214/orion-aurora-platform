@@ -1,5 +1,5 @@
 const express = require('express');
-const { addSighting, getSightings, getSighting } = require('../services/sightingsStore');
+const { addSighting, getSightings, getSighting, deleteAllSightings } = require('../services/sightingsStore');
 const { getCache } = require('../services/noaaPoller');
 
 const router = express.Router();
@@ -46,6 +46,16 @@ router.post('/', async (req, res) => {
     res.status(201).json({ sighting });
   } catch (e) {
     res.status(400).json({ error: e.message });
+  }
+});
+
+// DELETE /api/sightings — clear all sightings and photos (admin only)
+router.delete('/', async (req, res) => {
+  try {
+    await deleteAllSightings();
+    res.json({ success: true, message: 'All sightings cleared' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 

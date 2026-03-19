@@ -4,28 +4,81 @@
  * that catch photogenic events missed by the 3-hour Kp average.
  *
  * Trigger model:
- *   1) WATCH   => dBz/dt < 0 nT/min (any negative turn), 1 cycle
- *   2) WARNING => Bz < 0 nT
- *   3) SEVERE  => speed > 320 km/s AND Bz < 0 nT
+ *   1) WATCH   => dBz/dt < -2 nT/min for 3+ consecutive 1-minute readings
+ *   2) WARNING => Bz < -7 nT
+ *   3) SEVERE  => speed > 500 km/s AND Bz < -5 nT
  *
  * State machine behavior:
  *   - Escalation is immediate (WATCH -> WARNING -> SEVERE)
- *   - Quiet clear requires 10 consecutive quiet samples
- *   - Same-level re-broadcast every 1 minute
- *   - Stale alert expiry after 60 minutes
+ *   - De-escalation uses hysteresis thresholds to avoid flapping
+ *   - Alert clears only after several consecutive quiet samples
  */
 const { getCache } = require('./noaaPoller');
 
 const HISTORY_LENGTH = 10;            // readings to maintain for derivative
 const MONITOR_INTERVAL_MS = 60000; // 1 minute
-const CONFIG = {
-  bzWarningThreshold: 0,
-  bzRateWatchThreshold: 0,
-  speedSevereThreshold: 320,
-  watchConsecutiveRequired: 1,
-  quietClearRequired: 10,
-  sameLevelRebroadcastMs: 1 * 60 * 1000,
-  maxActiveAlertAgeMs: 60 * 60 * 1000,
+const PROFILES = {
+  test: {
+    bzWarningThreshold: -1.5,
+    bzSevereThreshold: -2,
+    bzRateWatchThreshold: -0.3,
+    speedSevereThreshold: 360,
+    watchConsecutiveRequired: 1,
+    quietClearRequired: 5,
+    sameLevelRebroadcastMs: 2 * 60 * 1000,
+    maxActiveAlertAgeMs: 45 * 60 * 1000,
+    hysteresis: {
+      severe: { bz: -1.5, speed: 340 },
+      warning: { bz: -1.0 },
+      watch: { bzRate: -0.2 },
+    },
+  },
+  real: {
+    bzWarningThreshold: -7,
+    bzSevereThreshold: -5,
+    bzRateWatchThreshold: -2,
+    speedSevereThreshold: 500,
+    watchConsecutiveRequired: 3,
+    quietClearRequired: 3,
+    sameLevelRebroadcastMs: 10 * 60 * 1000,
+    maxActiveAlertAgeMs: 20 * 60 * 1000,
+    hysteresis: {
+      severe: { bz: -4.5, speed: 470 },
+      warning: { bz: -5.5 },
+      watch: { bzRate: -1.2 },
+    },
+  },
+  // Legacy support
+  strict: {
+    bzWarningThreshold: -7,
+    bzSevereThreshold: -5,
+    bzRateWatchThreshold: -2,
+    speedSevereThreshold: 500,
+    watchConsecutiveRequired: 3,
+    quietClearRequired: 3,
+    sameLevelRebroadcastMs: 10 * 60 * 1000,
+    maxActiveAlertAgeMs: 20 * 60 * 1000,
+    hysteresis: {
+      severe: { bz: -4.5, speed: 470 },
+      warning: { bz: -5.5 },
+      watch: { bzRate: -1.2 },
+    },
+  },
+  lenient: {
+    bzWarningThreshold: -1.5,
+    bzSevereThreshold: -2,
+    bzRateWatchThreshold: -0.3,
+    speedSevereThreshold: 360,
+    watchConsecutiveRequired: 1,
+    quietClearRequired: 5,
+    sameLevelRebroadcastMs: 2 * 60 * 1000,
+    maxActiveAlertAgeMs: 45 * 60 * 1000,
+    hysteresis: {
+      severe: { bz: -1.5, speed: 340 },
+      warning: { bz: -1.0 },
+      watch: { bzRate: -0.2 },
+    },
+  },
 };
 
 const bzHistory = [];
@@ -38,8 +91,28 @@ let lastBroadcastLevel = null;
 let lastBroadcastTs = 0;
 
 let broadcastFn = null;
+let currentProfile = (() => {
+  const env = String(process.env.SUBSTORM_PROFILE || 'test').toLowerCase();
+  if (env === 'real' || env === 'strict') return 'real';
+  if (env === 'test' || env === 'lenient') return 'test';
+  return 'test';
+})();
 
 const LEVEL_RANK = { WATCH: 1, WARNING: 2, SEVERE: 3 };
+
+function profileConfig() {
+  return PROFILES[currentProfile] || PROFILES.test;
+}
+
+function resetState() {
+  latestSubstormAlert = null;
+  activeLevel = null;
+  activeEventId = null;
+  watchRateBreachCount = 0;
+  quietSampleCount = 0;
+  lastBroadcastLevel = null;
+  lastBroadcastTs = 0;
+}
 
 function computeDerivative(history) {
   if (history.length < 2) return 0;
@@ -57,12 +130,12 @@ function candidateLevel(bz, bzRate, speed, cfg) {
   if (bzRate < cfg.bzRateWatchThreshold) watchRateBreachCount += 1;
   else watchRateBreachCount = 0;
 
-  // Compound severe: fast solar wind + southward Bz.
-  if (speed > cfg.speedSevereThreshold && bz < cfg.bzWarningThreshold) {
+  // Compound severe: fast solar wind + strongly negative Bz.
+  if (speed > cfg.speedSevereThreshold && bz < cfg.bzSevereThreshold) {
     return { level: 'SEVERE', message: `High-speed solar wind (${Math.round(speed)} km/s) with Bz=${bz.toFixed(1)} nT — elevated substorm risk`, confidence: 'HIGH' };
   }
 
-  // Absolute southward field.
+  // Absolute strong southward field.
   if (bz < cfg.bzWarningThreshold) {
     return { level: 'WARNING', message: `Bz crossed ${bz.toFixed(1)} nT — substorm conditions active`, confidence: 'HIGH' };
   }
@@ -92,6 +165,20 @@ function applyStateMachine(candidate, bz, bzRate, speed, cfg) {
   if (candidate && candidateRank > currentRank) {
     quietSampleCount = 0;
     return candidate;
+  }
+
+  // Maintain current level while hysteresis still holds.
+  if (activeLevel === 'SEVERE' && speed >= cfg.hysteresis.severe.speed && bz <= cfg.hysteresis.severe.bz) {
+    quietSampleCount = 0;
+    return { level: 'SEVERE', message: `High-speed solar wind (${Math.round(speed)} km/s) with Bz=${bz.toFixed(1)} nT — elevated substorm risk`, confidence: 'HIGH' };
+  }
+  if (activeLevel === 'WARNING' && bz <= cfg.hysteresis.warning.bz) {
+    quietSampleCount = 0;
+    return { level: 'WARNING', message: `Bz remains strongly southward at ${bz.toFixed(1)} nT`, confidence: 'HIGH' };
+  }
+  if (activeLevel === 'WATCH' && bzRate <= cfg.hysteresis.watch.bzRate) {
+    quietSampleCount = 0;
+    return { level: 'WATCH', message: `Bz turning southward at ${bzRate.toFixed(1)} nT/min — substorm may develop within 10 minutes`, confidence: 'MEDIUM' };
   }
 
   // Controlled de-escalation if candidate is lower than active level.
@@ -133,7 +220,7 @@ function startSubstormMonitor(broadcast) {
   console.log('[substormDetector] monitor started');
 
   setInterval(() => {
-    const cfg = CONFIG;
+    const cfg = profileConfig();
     if (latestSubstormAlert && !isFreshAlert(latestSubstormAlert, cfg)) {
       latestSubstormAlert = null;
       activeLevel = null;
@@ -161,8 +248,9 @@ function startSubstormMonitor(broadcast) {
       activeEventId = null;
       latestSubstormAlert = null;
     } else {
+      const previousLevel = activeLevel;
       activeLevel = next.level;
-      if (!activeEventId) {
+      if (!activeEventId || previousLevel !== activeLevel) {
         activeEventId = buildEventId(activeLevel);
       }
       latestSubstormAlert = {
@@ -175,12 +263,6 @@ function startSubstormMonitor(broadcast) {
       };
 
       if (shouldBroadcast(activeLevel, cfg)) {
-        // Rotate event ID for each rebroadcast so dismissed alerts can reappear on fresh broadcasts.
-        activeEventId = buildEventId(activeLevel);
-        latestSubstormAlert = {
-          ...latestSubstormAlert,
-          eventId: activeEventId,
-        };
         console.log(`[substormDetector] ALERT: ${latestSubstormAlert.level} — ${latestSubstormAlert.message}`);
         broadcastFn('substorm_alert', latestSubstormAlert);
         lastBroadcastLevel = activeLevel;
@@ -201,7 +283,7 @@ function startSubstormMonitor(broadcast) {
 
 function getBzHistory() { return bzHistory; }
 function getLatestSubstormAlert() {
-  const cfg = CONFIG;
+  const cfg = profileConfig();
   if (!isFreshAlert(latestSubstormAlert, cfg)) {
     latestSubstormAlert = null;
     return null;
@@ -209,4 +291,27 @@ function getLatestSubstormAlert() {
   return latestSubstormAlert;
 }
 
-module.exports = { startSubstormMonitor, getBzHistory, getLatestSubstormAlert };
+function getSubstormProfile() {
+  return currentProfile;
+}
+
+function setSubstormProfile(profile) {
+  const normalized = String(profile || '').toLowerCase();
+  // Support both new (test/real) and legacy (lenient/strict) names
+  let mapped = normalized;
+  if (normalized === 'strict') mapped = 'real';
+  if (normalized === 'lenient') mapped = 'test';
+  
+  if (!Object.prototype.hasOwnProperty.call(PROFILES, mapped)) {
+    return { ok: false, error: 'profile must be test, real, lenient, or strict' };
+  }
+  if (mapped === currentProfile) {
+    return { ok: true, profile: currentProfile, changed: false };
+  }
+
+  currentProfile = mapped;
+  resetState();
+  return { ok: true, profile: currentProfile, changed: true };
+}
+
+module.exports = { startSubstormMonitor, getBzHistory, getLatestSubstormAlert, getSubstormProfile, setSubstormProfile };

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getSubstormProfile, setSubstormProfile } from '../services/api';
 
 function timeSince(ts, nowMs = Date.now()) {
   if (!ts) return '';
@@ -91,18 +92,88 @@ function computeAlertBadge(substormAlert, noaaAlerts) {
 
 export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSubstorm }) {
   const [nowMs, setNowMs] = useState(Date.now());
+  const [profile, setProfile] = useState('test');
+  const [switchingProfile, setSwitchingProfile] = useState(false);
   const hasAlerts = noaaAlerts && noaaAlerts.length > 0;
   const badge = computeAlertBadge(substormAlert, noaaAlerts);
+
+  const thresholds = {
+    test: {
+      watch: { rate: '-0.3', cycles: 1 },
+      warning: { bz: '-1.5' },
+      severe: { speed: '360', bz: '-2' },
+      rebroadcast: '2m',
+      staleExpiry: '45m',
+    },
+    real: {
+      watch: { rate: '-2', cycles: 3 },
+      warning: { bz: '-7' },
+      severe: { speed: '500', bz: '-5' },
+      rebroadcast: '10m',
+      staleExpiry: '20m',
+    },
+  };
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 15000);
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    getSubstormProfile()
+      .then((data) => {
+        const p = String(data?.profile || '').toLowerCase();
+        if (p === 'real' || p === 'strict' || p === 'test' || p === 'lenient') {
+          setProfile(p === 'strict' || p === 'real' ? 'real' : 'test');
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleToggleProfile() {
+    if (switchingProfile) return;
+    const prev = profile;
+    const next = profile === 'real' ? 'test' : 'real';
+    setProfile(next);
+    setSwitchingProfile(true);
+    try {
+      const data = await setSubstormProfile(next);
+      const p = String(data?.profile || next).toLowerCase();
+      setProfile(p === 'strict' || p === 'real' ? 'real' : 'test');
+    } catch {
+      setProfile(prev);
+    } finally {
+      setSwitchingProfile(false);
+    }
+  }
+
+  const cfg = thresholds[profile];
+
   return (
     <div className="panel">
       <div className="panel-title">
         Alerts
+        <button
+          onClick={handleToggleProfile}
+          disabled={switchingProfile}
+          title="Toggle substorm detection sensitivity: TEST (lenient) vs REAL (strict)"
+          style={{
+            float: 'right',
+            marginRight: 6,
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            background: profile === 'test' ? 'rgba(0,188,212,0.16)' : 'rgba(255,171,64,0.16)',
+            color: profile === 'test' ? 'var(--info)' : 'var(--warning)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '0.05em',
+            padding: '0 6px',
+            cursor: switchingProfile ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {switchingProfile ? 'SWITCHING…' : profile === 'test' ? 'TEST' : 'REAL'}
+        </button>
         <span style={{
           float: 'right',
           borderRadius: 10,
@@ -113,6 +184,7 @@ export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSu
           border: `1px solid ${badge.border}`,
           color: badge.color,
           background: badge.bg,
+          marginRight: 6,
         }}>
           {badge.label}
         </span>
@@ -127,6 +199,16 @@ export default function SubstormWarning({ substormAlert, noaaAlerts, onDismissSu
           No active alerts. Monitoring Bz rate of change…
         </div>
       )}
+
+      <div style={{ background: 'var(--bg-panel)', borderRadius: 6, padding: '8px 10px', marginBottom: 10, marginTop: 10, fontSize: 10, fontFamily: 'var(--font-mono)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+        <div style={{ color: 'var(--text-dim)', marginBottom: 6, letterSpacing: '0.06em', fontWeight: 700 }}>THRESHOLDS ({profile.toUpperCase()})</div>
+        <div>WATCH: dBz/dt &lt; {cfg.watch.rate} ({cfg.watch.cycles} cycles)</div>
+        <div>WARNING: Bz &lt; {cfg.warning.bz} nT</div>
+        <div>SEVERE: speed &gt; {cfg.severe.speed} &amp; Bz &lt; {cfg.severe.bz} nT</div>
+        <div style={{ marginTop: 6, color: 'var(--text-dim)', fontSize: 9 }}>
+          Re-broadcast: {cfg.rebroadcast} · Stale expiry: {cfg.staleExpiry}
+        </div>
+      </div>
 
       {hasAlerts && (
         <div style={{ marginTop: 4 }}>

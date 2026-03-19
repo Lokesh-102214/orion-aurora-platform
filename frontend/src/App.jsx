@@ -141,18 +141,6 @@ export default function App() {
   // OVATION update → refresh score
   useEffect(() => { if (ovation) refetchScore(); }, [ovation]); // eslint-disable-line
 
-  // Delete all sightings
-  const handleDeleteAllSightings = async () => {
-    if (!window.confirm('Are you sure? This will delete all community sightings permanently.')) return;
-    try {
-      const response = await fetch(`${API_BASE}/sightings`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Failed to delete sightings');
-      alert('All sightings cleared successfully');
-    } catch (err) {
-      alert(`Error: ${err.message}`);
-    }
-  };
-
   // Substorm
   useEffect(() => {
     if (!substormAlert) {
@@ -314,36 +302,6 @@ export default function App() {
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', marginBottom: 12 }}>
               Right-click anywhere on the map to report a sighting. Pins appear live for all users.
             </div>
-            {sightings.length > 0 && (
-              <button
-                onClick={handleDeleteAllSightings}
-                style={{
-                  width: '100%',
-                  padding: '6px 10px',
-                  marginBottom: 12,
-                  background: 'rgba(255, 82, 82, 0.12)',
-                  border: '1px solid var(--aurora-red)',
-                  borderRadius: 4,
-                  color: 'var(--aurora-red)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: '0.05em',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseOver={(e) => {
-                  e.target.style.background = 'rgba(255, 82, 82, 0.2)';
-                  e.target.style.borderColor = '#ff6666';
-                }}
-                onMouseOut={(e) => {
-                  e.target.style.background = 'rgba(255, 82, 82, 0.12)';
-                  e.target.style.borderColor = 'var(--aurora-red)';
-                }}
-              >
-                🗑 Clear All Sightings
-              </button>
-            )}
             {sightings.length === 0 ? (
               <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>No sightings yet.</div>
             ) : (

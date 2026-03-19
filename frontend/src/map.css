@@ -409,19 +409,23 @@
 @media (max-width: 768px) {
   .app-shell {
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(44vh, 1fr) minmax(34vh, 48vh);
+    grid-template-rows: auto 1fr;
     height: 100dvh;
   }
 
   .app-header {
     gap: 8px;
-    padding: 8px 10px;
-    min-height: 48px;
+    padding: 6px 8px;
+    min-height: 52px;
     flex-wrap: wrap;
+    row-gap: 6px;
+    align-items: flex-start;
+    align-content: flex-start;
   }
 
   .header-left {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
+    order: -1;
   }
 
   .ovation-time {
@@ -431,13 +435,16 @@
   .header-right {
     width: 100%;
     margin-left: 0;
-    gap: 8px;
+    gap: 6px;
     overflow-x: auto;
     padding-bottom: 2px;
+    order: 2;
   }
 
   .sidebar-toggle-btn {
     display: inline-flex;
+    order: 1;
+    margin-left: auto;
   }
 
   .header-right::-webkit-scrollbar {
@@ -450,38 +457,42 @@
   }
 
   .icon-btn {
-    padding: 5px 8px;
-    font-size: 10px;
+    padding: 7px 10px;
+    font-size: 11px;
     white-space: nowrap;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .sidebar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    max-height: min(72dvh, 560px);
-    grid-row: 3;
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    max-height: none;
+    grid-row: auto;
     border-right: none;
     border-top: 1px solid var(--border);
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
     background: linear-gradient(180deg, rgba(10, 15, 30, 0.96), rgba(10, 15, 30, 1));
-    transform: translateY(calc(100% - 44px));
-    transition: transform 0.2s ease;
+    transform: none;
+    transition: none;
     z-index: 900;
   }
 
   .sidebar.mobile-open {
-    transform: translateY(0);
+    transform: none;
   }
 
   .sidebar-mobile-head {
     position: sticky;
     top: 0;
     z-index: 7;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: space-between;
     padding: 6px 10px;

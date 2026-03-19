@@ -84,7 +84,7 @@ export default function App() {
   const [visibilityAlert,   setVisibilityAlert]    = useState(null);
   const [viewerInstance,    setViewerInstance]     = useState(null);
   const [loadGlobe,         setLoadGlobe]          = useState(false);
-  const [sidebarOpen,       setSidebarOpen]        = useState(false);
+  const [sidebarOpen,       setSidebarOpen]        = useState(true);
 
   // SSE event source ref for sightings
   const [esRef, setEsRef] = useState(null);
